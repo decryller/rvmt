@@ -24,7 +24,8 @@ namespace RVMT {
             ItemType_None       = 0,
             ItemType_Slider     = 1,
             ItemType_Button     = 2,
-            ItemType_Checkbox   = 3
+            ItemType_Checkbox   = 3,
+            ItemType_InputText  = 4
         };
 
         struct drawableElement {
@@ -33,6 +34,16 @@ namespace RVMT {
             wchar_t ch = 0;
         };
 
+        struct keyPress {
+            char key;
+            const char* field;
+
+            keyPress operator=(keyPress from) const {
+                return {from.key, from.field};
+            }
+        };
+
+        // I need to tidy this up.
         extern std::vector<drawableElement> drawList; // Vector of "drawableElement" struct.
         extern std::vector<std::wstring> canvas; // Map to which drawlist's content will go to
         extern std::wostringstream preScreen; // Temporal buffer used to print the canvas all at once.
@@ -78,7 +89,14 @@ namespace RVMT {
         extern int _NULLINT;
         extern unsigned int _NULLUINT;
         extern Window _NULLX11WINDOW;
+
+        extern bool startCalled;
+        extern bool stopCalled; // Used to notify threads to exit their main loops.
+
+        extern std::vector<keyPress> KEYPRESSES;
     }
+    
+    extern std::vector<bool> renderRequests;
 
     extern int cursorX;
     extern int cursorY;
@@ -87,6 +105,7 @@ namespace RVMT {
     // === Checkbox
     // === Button
     // === Slider
+    // === InputText
 
     // Print a checkbox.
     // When val is false, it will print falseText.
@@ -100,9 +119,12 @@ namespace RVMT {
     bool Button(const char* text, ...);
 
     // Print a draggable slider.
-    // Returns 0 on idle.
-    // Returns 1 if clicked.
+    // Returns true if it's clicked
     bool Slider(const char* sliderID, int length, float minVal, float maxVal, float* var);
+
+    // Print a text input field.
+    // Returns true if it's clicked
+    bool InputText(const char* fieldID, char* val, unsigned int maxStrSize, int width);
 
     // !=== Drawing ===!
     // === Text
@@ -122,15 +144,11 @@ namespace RVMT {
     
     // !=== Internal ===!
     // === Render
-    // === RegisterInput
     // === Start
     // === Stop
 
     // Render drawlist's contents.
     void Render();
-
-    // Register user's input to RVMT's internal variables.
-    void RegisterInput();
 
     // Start.
     // RVMT will treat the window that is focused when this function gets called as the main window.

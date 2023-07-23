@@ -3,10 +3,13 @@
 #include <cmath>
 #include <iostream>
 #include <cstdarg>
+#include <sstream>
 #include <sys/ioctl.h>
+#include <termios.h>
+#include <thread>
 
 bool strEquals(const char* first, const char* second) {
-    for (int i = 0; i < 1024; i++) {
+    for (int i = 0; i < 4096; i++) {
         if (first[i] == 0 && second[i] == 0)
             return true;
 
@@ -14,6 +17,17 @@ bool strEquals(const char* first, const char* second) {
             return false;
     }
     return false;
+}
+
+int strLength(const char* str) {
+    if (str[0] == 0)
+        return 0;
+
+    for (int i = 0; i < 4096; i++) 
+        if (str[i] == 0)
+            return i;
+    
+    return 4096;
 }
 
 // Start extern variables.
@@ -57,6 +71,12 @@ bool strEquals(const char* first, const char* second) {
     RVMT::internal::ItemType_ RVMT::internal::activeItemType = ItemType_None;
     const char* RVMT::internal::activeItemID = "none";
 
+    bool RVMT::internal::startCalled = false;
+    bool RVMT::internal::stopCalled = false;
+    std::vector<bool> RVMT::renderRequests;
+
+    std::vector<RVMT::internal::keyPress> RVMT::internal::KEYPRESSES;
+
     int RVMT::cursorX = 0;
     int RVMT::cursorY = 0;
 
@@ -66,10 +86,20 @@ bool strEquals(const char* first, const char* second) {
 using namespace RVMT;
 using namespace RVMT::internal;
 
+void requestNewRender() {
+    renderRequests.push_back(1);
+};
+
+void resetActiveItem() {
+    activeItemType = ItemType_None;
+    activeItemID = "none";
+}
+
 // !=== Widgets ===!
-// === Checkbox
-// === Button
-// === Slider
+// === RVMT::Checkbox
+// === RVMT::Button
+// === RVMT::Slider
+// === RVMT::Slider
 
 bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
     const int startX = cursorX;
@@ -104,6 +134,8 @@ bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
     if (!PREVINPUT_MOUSE1HELD && NEWINPUT_MOUSE1HELD &&
         NEWINPUT_MOUSECOL >= startX && NEWINPUT_MOUSECOL < startX + textWidth &&
         NEWINPUT_MOUSEROW == startY) {
+        
+        resetActiveItem();
         *val = !*val;
         activeItemType = ItemType_Checkbox;
         return true;
@@ -148,6 +180,7 @@ bool RVMT::Button(const char* str, ...) {
         NEWINPUT_MOUSECOL >= startX && NEWINPUT_MOUSECOL <= startX + textLength + 1 &&
         NEWINPUT_MOUSEROW >= startY && NEWINPUT_MOUSEROW < startY + 3) {
 
+        resetActiveItem();
         activeItemType = ItemType_Button;
         return true;
     }
@@ -165,7 +198,7 @@ bool RVMT::Slider(const char* sliderID, int length, float minVal, float maxVal, 
     const int startXPX = (x + 1) * NEWINPUT_CELLWIDTH;
     const int endXPX = (x + length + 1) * NEWINPUT_CELLWIDTH;
 
-    bool rvalue = 0; // Idle.
+    bool rvalue = false; // Idle.
 
     // Begin interaction
     if (activeItemType != ItemType_Slider &&
@@ -173,7 +206,8 @@ bool RVMT::Slider(const char* sliderID, int length, float minVal, float maxVal, 
         NEWINPUT_MOUSEWINX > startXPX && NEWINPUT_MOUSEWINX < endXPX &&
         NEWINPUT_MOUSEROW == y) {
 
-        rvalue = 1; // Clicked
+        resetActiveItem();
+        rvalue = true; // Clicked
         activeItemType = ItemType_Slider;
         activeItemID = sliderID;
     }
@@ -219,6 +253,86 @@ bool RVMT::Slider(const char* sliderID, int length, float minVal, float maxVal, 
         cursorY++;
 
     return rvalue;
+}
+
+bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, int width) {
+    const int startX = cursorX;
+    const int startY = cursorY;
+    bool rvalue = false;
+
+    if (!PREVINPUT_MOUSE1HELD && NEWINPUT_MOUSE1HELD &&
+        NEWINPUT_MOUSECOL >= startX && NEWINPUT_MOUSECOL <= startX + width + 1 &&
+        NEWINPUT_MOUSEROW >= startY && NEWINPUT_MOUSEROW < startY + 3) {
+
+        resetActiveItem();
+        rvalue = true; // clicked
+        activeItemType = ItemType_InputText;
+        activeItemID = fieldID;
+    }
+
+    const bool thisFieldIsActive = (
+        activeItemType == ItemType_InputText &&
+        strEquals(activeItemID, fieldID)
+    );
+
+    int inputLength = strLength(val);
+
+    if (thisFieldIsActive) 
+        for (auto& keypress : KEYPRESSES)
+            if (strEquals(keypress.field, activeItemID)) {
+                const char KEY = keypress.key;
+
+                KEYPRESSES.erase(KEYPRESSES.begin());
+
+                // Escape / BEL
+                if (KEY == 27 || KEY == 7) {
+                    activeItemID = "none";
+                    activeItemType = ItemType_None;
+                    break;
+                }
+
+                // Delete / Backspace
+                if (KEY == 127 || KEY == 8) {
+                    if (inputLength == 0) // Empty field
+                        continue;
+
+                    val[inputLength - 1] = 0;
+                }
+
+                else if (inputLength < maxStrSize) {
+                    val[inputLength] = KEY;
+                    val[++inputLength] = 0;
+                }
+            }
+    
+    DrawBox(cursorX, cursorY, width, 1);
+    cursorX++;
+    cursorY++;
+
+    // Unfocused and no text written.
+    if (!thisFieldIsActive &&
+        inputLength == 0)
+        Text("...");
+
+    else if (inputLength > width)
+        Text("%s", &val[inputLength - width]);
+
+    else
+        Text("%s", val);
+
+    // Handle cursor and SameLine
+    sameLineX = width + 2;
+    sameLineY = cursorY - 2;
+
+    if (sameLineCalled)
+        cursorX = sameLineXRevert,
+        cursorY = sameLineYRevert,
+        sameLineCalled = false;
+    else   
+        cursorY++,
+        cursorX--;
+
+    return 0;
 }
 
 // !=== Drawing ===!
@@ -337,12 +451,119 @@ void RVMT::SameLine() {
 }
 
 // !=== Internal ===!
-// === Render
-// === RegisterInput
-// === Start
-// === Stop
+// === Input threads
+// === RVMT::Render
+// === RVMT::Start
+// === RVMT::Stop
+
+struct termios _termios;
+std::thread mouseInputThread;
+std::thread kbInputsThread;
+
+void mouseInputThreadFunc() {
+
+    while (!stopCalled) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        // In some cases, such as in i3-wm:
+        // XGetInputFocus somehow does not return the same as XQueryPointer.
+        // XGetInputFocus returns the "child"
+        // XQueryPointer returns the "parent"
+
+        Window currentWindow;
+        XQueryPointer(rootDisplay, rootWindow, &_NULLX11WINDOW, &currentWindow,
+            &_NULLINT, &_NULLINT, &_NULLINT, &_NULLINT, &_NULLUINT);
+
+        if (currentWindow != termX11Win &&
+            activeItemType != ItemType_Slider)
+            continue;
+            
+        // === Get borders thickness.
+        // There are two ways of getting it.
+        // 1) Using the XGetGeometry function that literally retrieves the borders' size.
+        unsigned int topBorder;
+        unsigned int leftBorder;
+
+        PREVINPUT_TERMWIDTH = NEWINPUT_TERMWIDTH;
+        PREVINPUT_TERMHEIGHT = NEWINPUT_TERMHEIGHT;
+
+        XGetGeometry(rootDisplay, termX11Win, &_NULLX11WINDOW, &NEWINPUT_TERMX, &NEWINPUT_TERMY, &NEWINPUT_TERMWIDTH, &NEWINPUT_TERMHEIGHT, &leftBorder, &topBorder);
+
+        // 2) Getting the "inner window's" x and y. Used only if the first one doesn't work.
+        if (topBorder == 0 && leftBorder == 0) {
+            unsigned long innerWindow;
+            XGetInputFocus(rootDisplay, &innerWindow, &_NULLINT);
+
+            XWindowAttributes windowAttributes;
+            XGetWindowAttributes(rootDisplay, innerWindow, &windowAttributes);
+
+            if (windowAttributes.y >= 0)
+                topBorder = windowAttributes.y;
+
+            if (windowAttributes.x >= 0)
+                leftBorder = windowAttributes.x;
+        }
+
+        NEWINPUT_TERMWIDTH -= (leftBorder*2);
+        NEWINPUT_TERMHEIGHT -= topBorder;
+
+        // === Get mouse values.
+        unsigned int mouseMask;
+        int mouseXPos;
+        int mouseYPos;
+        XQueryPointer(rootDisplay, rootWindow, &_NULLX11WINDOW, &_NULLX11WINDOW,
+                    &_NULLINT, &_NULLINT, &mouseXPos, &mouseYPos, &mouseMask);
+
+        NEWINPUT_MOUSEWINX = mouseXPos - NEWINPUT_TERMX - leftBorder;
+        NEWINPUT_MOUSEWINY = mouseYPos - NEWINPUT_TERMY - topBorder;
+
+        PREVINPUT_MOUSE1HELD = NEWINPUT_MOUSE1HELD;
+        NEWINPUT_MOUSE1HELD = mouseMask & Button1Mask;
+
+        // "> 0"'s here to prevent floating point exceptions.
+        if (colCount > 0 && rowCount > 0) {
+            NEWINPUT_CELLWIDTH = ((float)NEWINPUT_TERMWIDTH / (float)colCount);
+        
+            if (NEWINPUT_TERMWIDTH > 0)
+                NEWINPUT_MOUSECOL = std::floor((float)NEWINPUT_MOUSEWINX / ((float)NEWINPUT_TERMWIDTH / (float)colCount));
+            
+            if (NEWINPUT_TERMHEIGHT > 0) 
+                NEWINPUT_MOUSEROW = std::floor((float)NEWINPUT_MOUSEWINY / ((float)NEWINPUT_TERMHEIGHT / (float)rowCount));
+        }
+
+        if (NEWINPUT_MOUSE1HELD ||
+            (PREVINPUT_MOUSE1HELD && !NEWINPUT_MOUSE1HELD) ||
+            PREVINPUT_TERMWIDTH != NEWINPUT_TERMWIDTH ||
+            PREVINPUT_TERMHEIGHT != NEWINPUT_TERMHEIGHT)
+            renderRequests.push_back(1);
+    }
+}
+
+void kbInputsThreadFunc() {
+    while (!stopCalled) {
+        const char LATEST_KEYPRESS = std::cin.get();
+
+        if (activeItemType == ItemType_InputText) {
+            KEYPRESSES.push_back({
+                LATEST_KEYPRESS,
+                activeItemID
+            });
+            renderRequests.push_back(1);
+        }
+    }
+}
 
 void RVMT::Render() {
+
+    // Reset active item if idling.
+    if (!NEWINPUT_MOUSE1HELD &&
+        activeItemType != ItemType_None &&
+        activeItemType != ItemType_InputText) {
+        
+        activeItemType = ItemType_None;
+        activeItemID = "none";
+        renderRequests.push_back(1);
+    }
+
     struct winsize terminalSize;
     ioctl(1, TIOCGWINSZ, &terminalSize);
 
@@ -379,80 +600,6 @@ void RVMT::Render() {
     cursorY = 0;
 }
 
-void RVMT::RegisterInput() {
-    // In some cases, such as in i3-wm:
-    // XGetInputFocus somehow does not return the same as XQueryPointer.
-    // XGetInputFocus returns the "child"
-    // XQueryPointer returns the "parent"
-
-    Window currentWindow;
-    XQueryPointer(rootDisplay, rootWindow, &_NULLX11WINDOW, &currentWindow,
-        &_NULLINT, &_NULLINT, &_NULLINT, &_NULLINT, &_NULLUINT);
-
-    if (currentWindow != termX11Win &&
-        activeItemType != ItemType_Slider)
-        return;
-        
-    // === Get borders thickness.
-    // There are two ways of getting it.
-    // 1) Using the XGetGeometry function that literally retrieves the borders' size.
-    unsigned int topBorder;
-    unsigned int leftBorder;
-
-    PREVINPUT_TERMWIDTH = NEWINPUT_TERMWIDTH;
-    PREVINPUT_TERMHEIGHT = NEWINPUT_TERMHEIGHT;
-
-    XGetGeometry(rootDisplay, termX11Win, &_NULLX11WINDOW, &NEWINPUT_TERMX, &NEWINPUT_TERMY, &NEWINPUT_TERMWIDTH, &NEWINPUT_TERMHEIGHT, &leftBorder, &topBorder);
-
-    // 2) Getting the "inner window's" x and y. Used only if the first one doesn't work.
-    if (topBorder == 0 && leftBorder == 0) {
-        unsigned long innerWindow;
-        XGetInputFocus(rootDisplay, &innerWindow, &_NULLINT);
-
-        XWindowAttributes windowAttributes;
-        XGetWindowAttributes(rootDisplay, innerWindow, &windowAttributes);
-
-        if (windowAttributes.y >= 0)
-            topBorder = windowAttributes.y;
-
-        if (windowAttributes.x >= 0)
-            leftBorder = windowAttributes.x;
-    }
-   
-    NEWINPUT_TERMWIDTH -= (leftBorder*2);
-    NEWINPUT_TERMHEIGHT -= topBorder;
-
-    // === Get mouse values.
-    unsigned int mouseMask;
-    int mouseXPos;
-    int mouseYPos;
-    XQueryPointer(rootDisplay, rootWindow, &_NULLX11WINDOW, &_NULLX11WINDOW,
-                &_NULLINT, &_NULLINT, &mouseXPos, &mouseYPos, &mouseMask);
-
-    NEWINPUT_MOUSEWINX = mouseXPos - NEWINPUT_TERMX - leftBorder;
-    NEWINPUT_MOUSEWINY = mouseYPos - NEWINPUT_TERMY - topBorder;
-
-    PREVINPUT_MOUSE1HELD = NEWINPUT_MOUSE1HELD;
-    NEWINPUT_MOUSE1HELD = mouseMask & Button1Mask;
-
-    // "> 0"'s here to prevent floating point exceptions.
-    if (colCount > 0 && rowCount > 0) {
-        NEWINPUT_CELLWIDTH = ((float)NEWINPUT_TERMWIDTH / (float)colCount);
-    
-        if (NEWINPUT_TERMWIDTH > 0)
-            NEWINPUT_MOUSECOL = std::floor((float)NEWINPUT_MOUSEWINX / ((float)NEWINPUT_TERMWIDTH / (float)colCount));
-        
-        if (NEWINPUT_TERMHEIGHT > 0) 
-            NEWINPUT_MOUSEROW = std::floor((float)NEWINPUT_MOUSEWINY / ((float)NEWINPUT_TERMHEIGHT / (float)rowCount));
-    }
-
-    // Reset active item if idling.
-    if (!NEWINPUT_MOUSE1HELD && activeItemType != ItemType_None) {
-        activeItemType = ItemType_None;
-        activeItemID = "none";
-    }
-}
-
 void RVMT::Start() {
     // Set locale to print unicodes correctly.
     std::locale::global(std::locale(""));
@@ -468,8 +615,33 @@ void RVMT::Start() {
     XQueryPointer(
         rootDisplay, rootWindow, &_NULLX11WINDOW, &termX11Win,
         &_NULLINT, &_NULLINT, &_NULLINT, &_NULLINT, &_NULLUINT);
+
+
+    tcgetattr(0, &_termios);
+    // Turn off canonical mode and input echoing for keyboard inputs.
+    _termios.c_lflag = _termios.c_lflag ^ ICANON;
+    _termios.c_lflag = _termios.c_lflag ^ ECHO;
+    tcsetattr(0, 0, &_termios);
+
+    // Start input threads.
+    mouseInputThread = std::thread(&mouseInputThreadFunc);
+    kbInputsThread = std::thread(&kbInputsThreadFunc);
+
+    startCalled = true;
 }
 
 void RVMT::Stop() {
+    stopCalled = true;
+
+    // Wait for input threads to finish.
+    std::wcout << "\nPress any key to exit...\n";
+    mouseInputThread.join();
+    kbInputsThread.join();
+
+    // Restore terminal to the normal state.
+    _termios.c_lflag = _termios.c_lflag ^ ICANON;
+    _termios.c_lflag = _termios.c_lflag ^ ECHO;
+    tcsetattr(0, 0, &_termios);
+    
     XCloseDisplay(rootDisplay);
 }

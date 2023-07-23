@@ -1,17 +1,17 @@
 ## RVMT
 Stands for "Revamped Terminal" (for X11).\
 I don't think it offers that much to the terminal to call it a revamp, but I like how "RVMT" looks so whatever.
-## Dependencies
+### Dependencies
 - libx11
 
-## Including in your project
+### Including in your project
 1) Include `rvmt.cpp` and `rvmt.hpp` in your project folder.
 2) Include `rvmt.hpp` in your main file. 
 2) Compile `rvmt.cpp` along with your main file.
 ```
 $ g++ rvmt.cpp -lX11 <your arguments...>
 ```
-## Running the example
+### Running the example
 Try out the example (`example.cpp`).
 ```
 $ g++ rvmt.cpp example.cpp -lX11 -o rvmtTest

@@ -2,27 +2,25 @@
 #include <iostream>
 #include <thread>
 
-#define CHRONOELAPSEDMS(TIMEPOINT) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TIMEPOINT).count())
+// How this example works.
+// RVMT::Start() starts the input handling threads and allocate some X11 resources.
+// In the main loop | while (!quit)
+//    A condition waits until a new render is requested. | while (RVMT::renderRequests.size() == 0)
+//    Once a new render is requested, widgets will get sent to the drawlist | Text/Button/Etc.
+//    Drawlist contents will get printed to the terminal by RVMT::Render().
+//    Repeat.
+// RVMT::Stop() stops the input threads and releases X11 Resources.
 
 int main() {
     RVMT::Start();
-    
-    auto lastInputTime = std::chrono::system_clock::now();
     bool quit = false;
-
     while (!quit) {
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        RVMT::RegisterInput();
 
-        if (RVMT::internal::NEWINPUT_MOUSE1HELD ||
-            RVMT::internal::PREVINPUT_TERMWIDTH != RVMT::internal::NEWINPUT_TERMWIDTH ||
-            RVMT::internal::PREVINPUT_TERMHEIGHT != RVMT::internal::NEWINPUT_TERMHEIGHT)
-            lastInputTime = std::chrono::system_clock::now();
-        
-        if (CHRONOELAPSEDMS(lastInputTime) > 200) {
-            continue;
-        }
+        while (RVMT::renderRequests.size() == 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+
+        // Consume render request.
+        RVMT::renderRequests.erase(RVMT::renderRequests.begin());
 
         const unsigned short rowCount = RVMT::internal::rowCount;
         const unsigned short colCount = RVMT::internal::colCount;
@@ -33,7 +31,7 @@ int main() {
         RVMT::Text("A draggable slider between 1.3 and 1.4");
 
         static float sampleSlider = 1.0;
-        RVMT::Slider("theSlider", 15, 1.3, 1.4, &sampleSlider);
+        RVMT::Slider("sample slider", 15, 1.3, 1.4, &sampleSlider);
         RVMT::SameLine();
         RVMT::Text(" Its value is %.4f", sampleSlider);
 
@@ -54,6 +52,16 @@ int main() {
         RVMT::Text("Click this checkbox --> ");
         RVMT::SameLine();
         RVMT::Checkbox("[True]", "[False]", &checkboxValue);
+
+        static char inputFieldCharArr[65]; // +1 for a null-terminated string
+        RVMT::cursorY++;
+        RVMT::Text("An input field using char inputFieldCharArr[65]");
+        RVMT::InputText("sample input text using a char array", inputFieldCharArr, 64, 24);
+
+        static std::string inputFieldSTDString(64, 0);
+        RVMT::cursorY++;
+        RVMT::Text("An input field using std::string inputFieldSTDString");
+        RVMT::InputText("sample input text using std::string", &inputFieldSTDString[0], 64, 24);
 
         static unsigned int frameCount;
         RVMT::Text("Frame count: %i", frameCount++);
@@ -77,6 +85,10 @@ int main() {
 
             case RVMT::internal::ItemType_Checkbox:
                 RVMT::Text("ItemType_Checkbox (%i)", RVMT::internal::ItemType_Checkbox);
+                break;
+
+            case RVMT::internal::ItemType_InputText:
+                RVMT::Text("ItemType_InputText (%i)", RVMT::internal::ItemType_InputText);
                 break;
 
             default:
@@ -109,6 +121,8 @@ int main() {
         RVMT::Render();
     }
 
-    std::wcout << "\nExited main loop.\n"; std::wcout.flush();
+    std::wcout << "\nExited main loop."; std::wcout.flush();
+    RVMT::Stop();
+
     return 0;
 }
