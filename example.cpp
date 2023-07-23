@@ -25,6 +25,7 @@ int main() {
         const unsigned short rowCount = RVMT::internal::rowCount;
         const unsigned short colCount = RVMT::internal::colCount;
 
+        // === Widget showcase
         RVMT::Text("RVMT. Revamped Terminal.\nExample arrangement.\n");
 
         RVMT::Text("An unwanted Y Offset might be experienced\ndue to some terminal decorations, such\nas the menu bar in xfce4-terminal\n");
@@ -55,12 +56,12 @@ int main() {
 
         static char inputFieldCharArr[65]; // +1 for a null-terminated string
         RVMT::cursorY++;
-        RVMT::Text("An input field using char inputFieldCharArr[65]");
+        RVMT::Text("An input field using\nchar inputFieldCharArr[65]");
         RVMT::InputText("sample input text using a char array", inputFieldCharArr, 64, 24);
 
         static std::string inputFieldSTDString(64, 0);
         RVMT::cursorY++;
-        RVMT::Text("An input field using std::string inputFieldSTDString");
+        RVMT::Text("An input field using\nstd::string inputFieldSTDString");
         RVMT::InputText("sample input text using std::string", &inputFieldSTDString[0], 64, 24);
 
         static unsigned int frameCount;
@@ -98,20 +99,29 @@ int main() {
 
         RVMT::Text("Active Item ID: %s", RVMT::internal::activeItemID);
 
+        // === Box styles
         RVMT::cursorX = 46;
         RVMT::cursorY = 0;
 
         BoxStyle_Current = BoxStyle_Simple;
         RVMT::Button(" BoxStyle_Simple ");
+        RVMT::DrawHSeparator(72, 1, 1);
+        RVMT::DrawVSeparator(71, 0, 1);
 
         BoxStyle_Current = BoxStyle_Bold;
         RVMT::Button(" BoxStyle_Bold ");
+        RVMT::DrawHSeparator(72, 4, 1);
+        RVMT::DrawVSeparator(71, 3, 1);
 
         BoxStyle_Current = BoxStyle_DoubleLine;
         RVMT::Button(" BoxStyle_DoubleLine ");
+        RVMT::DrawHSeparator(72, 7, 1);
+        RVMT::DrawVSeparator(71, 6, 1);
 
         BoxStyle_Current = BoxStyle_Round;
         RVMT::Button(" BoxStyle_Round ");
+        RVMT::DrawHSeparator(72, 10, 1);
+        RVMT::DrawVSeparator(71, 9, 1);
 
         RVMT::cursorX = colCount - 8;
         RVMT::cursorY = rowCount - 3;

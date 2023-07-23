@@ -129,6 +129,8 @@ namespace RVMT {
     // !=== Drawing ===!
     // === Text
     // === DrawBox
+    // === DrawHSeparator
+    // === DrawVSeparator
     // === SameLine
 
     // Print text.
@@ -138,6 +140,16 @@ namespace RVMT {
     // Does not modify the cursor.
     // Gets style from BoxStyle_Current.
     void DrawBox(int x, int y, int width, int height);
+
+    // Draw a horizontal separator.
+    // Does not modify the cursor.
+    // Gets style from BoxStyle_Current.
+    void DrawHSeparator(int x, int y, int width);
+
+    // Draw a vertical separator.
+    // Does not modify the cursor.
+    // Gets style from BoxStyle_Current.
+    void DrawVSeparator(int x, int y, int height);
 
     // Move cursor to the previous element's right.
     void SameLine();

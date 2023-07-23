@@ -338,6 +338,8 @@ bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, in
 // !=== Drawing ===!
 // === Text
 // === DrawBox
+// === DrawHSeparator
+// === DrawVSeparator
 // === SameLine
 
 void RVMT::Text(const char* val, ...) {
@@ -439,6 +441,65 @@ void RVMT::DrawBox(int x, int y, int width, int height) {
     for (unsigned short i = 1; i < height; i++) // Right
         drawList.push_back({x + width, y + i, vBorders});
 
+}
+
+void RVMT::DrawHSeparator(int x, int y, int width) {
+    wchar_t leftLimit, middle, rightLimit;
+
+    switch (BoxStyle_Current) {
+        case BoxStyle_Simple:
+            leftLimit = 9500, middle = 9472, rightLimit = 9508;
+            break;
+
+        case BoxStyle_Bold:
+            leftLimit = 9507, middle = 9473, rightLimit = 9515;
+            break;
+
+        case BoxStyle_DoubleLine:
+            leftLimit = 9568, middle = 9552, rightLimit = 9571;
+            break;
+
+        case BoxStyle_Round: // Same as simple
+            leftLimit = 9500, middle = 9472, rightLimit = 9508;
+            break;
+    }
+
+    drawList.push_back({x, y, leftLimit});
+
+    for (int i = 1; i <= width; i++)
+        drawList.push_back({x+i, y, middle});
+
+    drawList.push_back({x + width + 1, y, rightLimit});
+    
+}
+
+void RVMT::DrawVSeparator(int x, int y, int height) {
+    wchar_t topLimit, middle, bottomLimit;
+
+    switch (BoxStyle_Current) {
+        case BoxStyle_Simple:
+            topLimit = 9516, middle = 9474, bottomLimit = 9524;
+            break;
+
+        case BoxStyle_Bold:
+            topLimit = 9523, middle = 9475, bottomLimit = 9531;
+            break;
+
+        case BoxStyle_DoubleLine:
+            topLimit = 9574, middle = 9553, bottomLimit = 9577;
+            break;
+
+        case BoxStyle_Round: // Same as simple
+            topLimit = 9516, middle = 9474, bottomLimit = 9524;
+            break;
+    }
+
+    drawList.push_back({x, y, topLimit});
+
+    for (int i = 1; i <= height; i++)
+        drawList.push_back({x, y + i, middle});
+
+    drawList.push_back({x, y + height + 1, bottomLimit});
 }
 
 void RVMT::SameLine() {
