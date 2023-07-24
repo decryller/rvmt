@@ -99,7 +99,7 @@ void resetActiveItem() {
 // === RVMT::Checkbox
 // === RVMT::Button
 // === RVMT::Slider
-// === RVMT::Slider
+// === RVMT::InputText
 
 bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
     const int startX = cursorX;
@@ -321,7 +321,7 @@ bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, in
         Text("%s", val);
 
     // Handle cursor and SameLine
-    sameLineX = width + 2;
+    sameLineX = cursorX + width + 1;
     sameLineY = cursorY - 2;
 
     if (sameLineCalled)
@@ -381,7 +381,6 @@ void RVMT::Text(const char* val, ...) {
     else 
         cursorX = startX,
         cursorY++;
-    
 }
 
 void RVMT::DrawBox(int x, int y, int width, int height) {
