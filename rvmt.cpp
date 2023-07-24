@@ -64,16 +64,12 @@ int strLength(const char* str) {
     Window RVMT::internal::rootWindow = 0;
     Window RVMT::internal::termX11Win = 0;
 
-    int RVMT::internal::_NULLINT = 0;
-    unsigned int RVMT::internal::_NULLUINT = 0;
-    Window RVMT::internal::_NULLX11WINDOW = 0;
-
     RVMT::internal::ItemType_ RVMT::internal::activeItemType = ItemType_None;
     const char* RVMT::internal::activeItemID = "none";
 
     bool RVMT::internal::startCalled = false;
     bool RVMT::internal::stopCalled = false;
-    std::vector<bool> RVMT::renderRequests;
+    std::vector<bool> RVMT::renderRequests{1}; // Start with a single render request
 
     std::vector<RVMT::internal::keyPress> RVMT::internal::KEYPRESSES;
 
@@ -85,6 +81,10 @@ int strLength(const char* str) {
 
 using namespace RVMT;
 using namespace RVMT::internal;
+
+int _NULLINT = 0;
+unsigned int _NULLUINT = 0;
+Window _NULLX11WINDOW = 0;
 
 void requestNewRender() {
     renderRequests.push_back(1);
@@ -165,7 +165,7 @@ bool RVMT::Button(const char* str, ...) {
 
     // Handle cursor and SameLine.
     sameLineY = cursorY - 2;
-    sameLineX = textLength + 2;
+    sameLineX = startX + textLength + 2;
 
     if (sameLineCalled) 
         cursorX = sameLineXRevert,
@@ -371,7 +371,7 @@ void RVMT::Text(const char* val, ...) {
     }
 
     // Handle cursor and SameLine.
-    sameLineX = textLength;
+    sameLineX = cursorX;
     sameLineY = cursorY;
 
     if (sameLineCalled) 

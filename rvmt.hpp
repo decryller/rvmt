@@ -86,10 +86,6 @@ namespace RVMT {
         extern ItemType_ activeItemType;
         extern const char* activeItemID;
 
-        extern int _NULLINT;
-        extern unsigned int _NULLUINT;
-        extern Window _NULLX11WINDOW;
-
         extern bool startCalled;
         extern bool stopCalled; // Used to notify threads to exit their main loops.
 
