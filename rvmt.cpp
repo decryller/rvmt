@@ -30,6 +30,19 @@ int strLength(const char* str) {
     return 4096;
 }
 
+unsigned int strCount(const char* str, char ch) {
+    unsigned int rvalue = 0;
+
+    for (int i = 0; i < 4096; i++) {
+        if (str[i] == 0)
+            break;
+
+        if (str[i] == ch)
+            rvalue++;
+    }
+    return rvalue;
+}
+
 // Start extern variables.
     std::vector<RVMT::internal::drawableElement> RVMT::internal::drawList{0};
     std::vector<std::wstring> RVMT::internal::canvas{L""};
@@ -55,6 +68,8 @@ int strLength(const char* str) {
     int RVMT::internal::NEWINPUT_CELLWIDTH = false;
 
     bool RVMT::internal::sameLineCalled = false;
+    bool RVMT::internal::sameLinedPreviousItem = false;
+
     int RVMT::internal::sameLineX = 0;
     int RVMT::internal::sameLineXRevert = 0;
     int RVMT::internal::sameLineY = 0;
@@ -69,16 +84,16 @@ int strLength(const char* str) {
 
     bool RVMT::internal::startCalled = false;
     bool RVMT::internal::stopCalled = false;
-    std::vector<bool> RVMT::renderRequests{1}; // Start with a single render request
 
     std::vector<RVMT::internal::keyPress> RVMT::internal::KEYPRESSES;
 
-    int RVMT::cursorX = 0;
-    int RVMT::cursorY = 0;
+    int RVMT::internal::cursorX = 0;
+    int RVMT::internal::cursorY = 0;
+
+    std::vector<bool> RVMT::renderRequests{1}; // Start with a single render request
 
     int BoxStyle_Current = BoxStyle_Round;
-
-
+    
 using namespace RVMT;
 using namespace RVMT::internal;
 
@@ -96,17 +111,57 @@ void resetActiveItem() {
 }
 
 // !=== Widgets ===!
+// === RVMT::Text
 // === RVMT::Checkbox
 // === RVMT::Button
 // === RVMT::Slider
 // === RVMT::InputText
 
+void RVMT::Text(const char* val, ...) {
+    if (sameLineCalled)
+        cursorX = sameLineX,
+        cursorY = sameLineY,
+        sameLineCalled = false,
+        sameLinedPreviousItem = true;
+
+    else if (!sameLineCalled && sameLinedPreviousItem)
+        cursorX = sameLineXRevert,
+        cursorY = sameLineYRevert,
+        sameLinedPreviousItem = false;
+        
+    char buffer[1024];
+
+    va_list args;
+    va_start(args, val);
+    const int textLength = vsnprintf(buffer, 1024, val, args);
+    va_end(args);
+
+    DrawText(cursorX, cursorY, buffer);
+
+    sameLineX = cursorX + textLength;
+    sameLineY = cursorY;
+
+    cursorY += 1 + strCount(val, 10); // Count newlines
+}
+
 bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
+
+    if (sameLineCalled)
+        cursorX = sameLineX,
+        cursorY = sameLineY,
+        sameLineCalled = false,
+        sameLinedPreviousItem = true;
+
+    else if (!sameLineCalled && sameLinedPreviousItem)
+        cursorX = sameLineXRevert,
+        cursorY = sameLineYRevert,
+        sameLinedPreviousItem = false;
+
     const int startX = cursorX;
     const int startY = cursorY;
 
     // Print text
-    const char* ptr = *val ? &falseText[0] : &trueText[0];
+    const char* ptr = *val ? &trueText[0] : &falseText[0];
     unsigned short textWidth = 0;
     for (unsigned short i = 0; i < 32767; i++) {
         if (ptr[i] == 0) {
@@ -120,15 +175,8 @@ bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
     sameLineX = cursorX;
     sameLineY = cursorY;
 
-    if (sameLineCalled) 
-        cursorX = sameLineXRevert,
-        cursorY = sameLineYRevert,
-        sameLineCalled = false;
-    
-    else 
-        cursorX = startX,
-        cursorY++;
-    
+    cursorX = startX;
+    cursorY++;
 
     // Handle return value
     if (!PREVINPUT_MOUSE1HELD && NEWINPUT_MOUSE1HELD &&
@@ -145,6 +193,16 @@ bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
 }
 
 bool RVMT::Button(const char* str, ...) {
+    if (sameLineCalled)
+        cursorX = sameLineX,
+        cursorY = sameLineY,
+        sameLineCalled = false,
+        sameLinedPreviousItem = true;
+
+    else if (!sameLineCalled && sameLinedPreviousItem)
+        cursorX = sameLineXRevert,
+        cursorY = sameLineYRevert,
+        sameLinedPreviousItem = false;
 
     const int startX = cursorX;
     const int startY = cursorY;
@@ -161,19 +219,13 @@ bool RVMT::Button(const char* str, ...) {
     cursorX++;
     cursorY++;
 
-    Text(buffer);
+    DrawText(cursorX, cursorY, buffer);
 
-    // Handle cursor and SameLine.
-    sameLineY = cursorY - 2;
-    sameLineX = startX + textLength + 2;
+    sameLineX = cursorX + textLength + 1;
+    sameLineY = cursorY - 1;
 
-    if (sameLineCalled) 
-        cursorX = sameLineXRevert,
-        cursorY = sameLineYRevert,
-        sameLineCalled = false;
-    else
-        cursorX = startX,
-        cursorY++;
+    cursorX = startX;
+    cursorY = startY + 3;
 
     // Handle return value
     if (!PREVINPUT_MOUSE1HELD && NEWINPUT_MOUSE1HELD &&
@@ -191,6 +243,17 @@ bool RVMT::Slider(const char* sliderID, int length, float minVal, float maxVal, 
 
     if (length < 1)
         length = 1;
+
+    if (sameLineCalled)
+        cursorX = sameLineX,
+        cursorY = sameLineY,
+        sameLineCalled = false,
+        sameLinedPreviousItem = true;
+
+    else if (!sameLineCalled && sameLinedPreviousItem)
+        cursorX = sameLineXRevert,
+        cursorY = sameLineYRevert,
+        sameLinedPreviousItem = false;
 
     const int x = cursorX;
     const int y = cursorY;
@@ -245,17 +308,24 @@ bool RVMT::Slider(const char* sliderID, int length, float minVal, float maxVal, 
     sameLineX = cursorX + length + 2;
     sameLineY = cursorY;
 
-    if (sameLineCalled)
-        cursorX = sameLineXRevert,
-        cursorY = sameLineYRevert,
-        sameLineCalled = false;
-    else
-        cursorY++;
+    cursorX = x;
+    cursorY++;
 
     return rvalue;
 }
 
 bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, int width) {
+    if (sameLineCalled)
+        cursorX = sameLineX,
+        cursorY = sameLineY,
+        sameLineCalled = false,
+        sameLinedPreviousItem = true;
+
+    else if (!sameLineCalled && sameLinedPreviousItem)
+        cursorX = sameLineXRevert,
+        cursorY = sameLineYRevert,
+        sameLinedPreviousItem = false;
+
     const int startX = cursorX;
     const int startY = cursorY;
     bool rvalue = false;
@@ -312,75 +382,49 @@ bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, in
     // Unfocused and no text written.
     if (!thisFieldIsActive &&
         inputLength == 0)
-        Text("...");
+        DrawText(cursorX, cursorY, "...");
 
     else if (inputLength > width)
-        Text("%s", &val[inputLength - width]);
+        DrawText(cursorX, cursorY, &val[inputLength - width]);
 
     else
-        Text("%s", val);
+        DrawText(cursorX, cursorY, val);
 
     // Handle cursor and SameLine
     sameLineX = cursorX + width + 1;
-    sameLineY = cursorY - 2;
+    sameLineY = cursorY - 1;
 
-    if (sameLineCalled)
-        cursorX = sameLineXRevert,
-        cursorY = sameLineYRevert,
-        sameLineCalled = false;
-    else   
-        cursorY++,
-        cursorX--;
+    cursorY += 2;
+    cursorX--;
 
     return 0;
 }
 
 // !=== Drawing ===!
-// === Text
-// === DrawBox
-// === DrawHSeparator
-// === DrawVSeparator
-// === SameLine
+// === RVMT::DrawText
+// === RVMT::DrawBox
+// === RVMT::DrawHSeparator
+// === RVMT::DrawVSeparator
+// === RVMT::SetCursorX
+// === RVMT::SetCursorY
+// === RVMT::SameLine
 
-void RVMT::Text(const char* val, ...) {
-    const int startX = cursorX;
-    const int startY = cursorY;
-    
-    char buffer[1024];
+void RVMT::DrawText(int x, int y, const char* val) {
+    const int startX = x;
 
-    va_list args;
-    va_start(args, val);
-    vsnprintf(buffer, sizeof(buffer), val, args);
-    va_end(args);
-
-    unsigned int textLength = 0;
-
-    for (int z = 0; z < sizeof(buffer); z++) {
-        if (buffer[z] == 0) {
-            textLength = z;
+    for (int z = 0; z < 1024; z++) {
+        if (val[z] == 0) {
             break;
         }
 
-        if (buffer[z] == 10) { // Newline
-            cursorX = startX;
-            cursorY++;
+        if (val[z] == 10) { // Newline
+            x = startX;
+            y++;
             continue;
         }
 
-        drawList.push_back({cursorX++, cursorY, buffer[z]});
+        drawList.push_back({x++, y, val[z]});
     }
-
-    // Handle cursor and SameLine.
-    sameLineX = cursorX;
-    sameLineY = cursorY;
-
-    if (sameLineCalled) 
-        cursorX = sameLineXRevert,
-        cursorY = sameLineYRevert,
-        sameLineCalled = false;
-    else 
-        cursorX = startX,
-        cursorY++;
 }
 
 void RVMT::DrawBox(int x, int y, int width, int height) {
@@ -501,10 +545,20 @@ void RVMT::DrawVSeparator(int x, int y, int height) {
     drawList.push_back({x, y + height + 1, bottomLimit});
 }
 
+void RVMT::SetCursorX(NewCursorPos mode, int value) {
+    InternalSetCursor('x', mode, value);
+}
+
+void RVMT::SetCursorY(NewCursorPos mode, int value) {
+    InternalSetCursor('y', mode, value);
+}
+
 void RVMT::SameLine() {
     sameLineCalled = true;
-    sameLineXRevert = cursorX;
-    sameLineYRevert = cursorY;
+
+    if (!sameLinedPreviousItem)
+        sameLineXRevert = cursorX,
+        sameLineYRevert = cursorY;
 
     cursorX = sameLineX;
     cursorY = sameLineY;
@@ -512,6 +566,7 @@ void RVMT::SameLine() {
 
 // !=== Internal ===!
 // === Input threads
+// === RVMT::internal::InternalSetCursor
 // === RVMT::Render
 // === RVMT::Start
 // === RVMT::Stop
@@ -609,6 +664,35 @@ void kbInputsThreadFunc() {
             });
             renderRequests.push_back(1);
         }
+    }
+}
+
+void RVMT::internal::InternalSetCursor(char axis, NewCursorPos mode, int value) {
+    int *cursor, *sameLineRevert;
+
+    if (axis == 'x')
+        cursor = &cursorX,
+        sameLineRevert = &sameLineXRevert;
+    
+    else if (axis == 'y')
+        cursor = &cursorY,
+        sameLineRevert = &sameLineYRevert;
+
+    switch (mode) {
+        case NewCursorPos_ADD:
+            *cursor += value;
+            *sameLineRevert += value;
+            break;
+
+        case NewCursorPos_SUBTRACT:
+            *cursor -= value;
+            *sameLineRevert -= value;
+            break;
+
+        case NewCursorPos_ABSOLUTE:
+            *cursor = value;
+            *sameLineRevert = value;
+            break;
     }
 }
 

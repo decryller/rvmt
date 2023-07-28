@@ -55,12 +55,12 @@ int main() {
         RVMT::Checkbox("[True]", "[False]", &checkboxValue);
 
         static char inputFieldCharArr[65]; // +1 for a null-terminated string
-        RVMT::cursorY++;
+        RVMT::SetCursorY(NewCursorPos_ADD, 1);
         RVMT::Text("An input field using\nchar inputFieldCharArr[65]");
         RVMT::InputText("sample input text using a char array", inputFieldCharArr, 64, 24);
 
         static std::string inputFieldSTDString(64, 0);
-        RVMT::cursorY++;
+        RVMT::SetCursorY(NewCursorPos_ADD, 1);
         RVMT::Text("An input field using\nstd::string inputFieldSTDString");
         RVMT::InputText("sample input text using std::string", &inputFieldSTDString[0], 64, 24);
 
@@ -100,8 +100,8 @@ int main() {
         RVMT::Text("Active Item ID: %s", RVMT::internal::activeItemID);
 
         // === Box styles
-        RVMT::cursorX = 46;
-        RVMT::cursorY = 0;
+        RVMT::SetCursorX(NewCursorPos_ABSOLUTE, 46);
+        RVMT::SetCursorY(NewCursorPos_ABSOLUTE, 0);
 
         BoxStyle_Current = BoxStyle_Simple;
         RVMT::Button(" BoxStyle_Simple ");
@@ -123,8 +123,61 @@ int main() {
         RVMT::DrawHSeparator(72, 10, 1);
         RVMT::DrawVSeparator(71, 9, 1);
 
-        RVMT::cursorX = colCount - 8;
-        RVMT::cursorY = rowCount - 3;
+        RVMT::SetCursorY(NewCursorPos_ADD, 4);
+        
+        // SameLine testing
+        static char BXChar[5]{0,0,0,0,0};
+        static bool CXBool = true;
+
+        RVMT::Text("SameLine testing");
+        // Buttons
+        RVMT::Button("A0");
+
+        RVMT::SameLine();
+        RVMT::Button("A1");
+        
+        RVMT::SameLine();
+        RVMT::Button("A2");
+
+        RVMT::SameLine();
+        RVMT::Button("A3");
+
+        RVMT::InputText("B1", BXChar, 4, 4);
+
+        RVMT::SameLine();
+        RVMT::InputText("B2", BXChar, 4, 4);
+
+        RVMT::SameLine();
+        RVMT::InputText("B3", BXChar, 4, 4);
+
+        RVMT::SameLine();
+        RVMT::InputText("B4", BXChar, 4, 4);
+
+        RVMT::Checkbox("[CT]", "[CF]", &CXBool);
+        
+        RVMT::SameLine();
+        RVMT::Checkbox("[CT]", "[CF]", &CXBool);
+
+        RVMT::SameLine();
+        RVMT::Checkbox("[CT]", "[CF]", &CXBool);
+
+        RVMT::SameLine();
+        RVMT::Checkbox("[CT]", "[CF]", &CXBool);
+
+        RVMT::Text("D1");
+
+        RVMT::SameLine();
+        RVMT::Text("D2");
+
+        RVMT::SameLine();
+        RVMT::Text("D3");
+
+        RVMT::SameLine();
+        RVMT::Text("D4");
+
+        RVMT::SetCursorX(NewCursorPos_ABSOLUTE, colCount - 8);
+        RVMT::SetCursorY(NewCursorPos_ABSOLUTE, rowCount - 3);
+
         if (RVMT::Button(" Quit "))
             quit = true;
 

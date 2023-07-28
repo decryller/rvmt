@@ -12,6 +12,12 @@ enum BoxStyle_ {
     BoxStyle_Round
 };
 
+ enum NewCursorPos {
+    NewCursorPos_ADD        = 0,
+    NewCursorPos_SUBTRACT   = 1,
+    NewCursorPos_ABSOLUTE   = 2
+};
+
 extern int BoxStyle_Current;
 
 namespace RVMT {
@@ -77,6 +83,7 @@ namespace RVMT {
         extern Window termX11Win; // Terminal's X11 Window ID
 
         extern bool sameLineCalled;
+        extern bool sameLinedPreviousItem;
         extern int sameLineX;
         extern int sameLineY;
 
@@ -90,18 +97,27 @@ namespace RVMT {
         extern bool stopCalled; // Used to notify threads to exit their main loops.
 
         extern std::vector<keyPress> KEYPRESSES;
+
+        extern int cursorX;
+        extern int cursorY;
+
+        // Set cursor's position.
+        void InternalSetCursor(char axis, NewCursorPos mode, int value);
     }
     
     extern std::vector<bool> renderRequests;
 
-    extern int cursorX;
-    extern int cursorY;
+    
 
     // !=== Widgets ===!
+    // === Texts
     // === Checkbox
     // === Button
     // === Slider
     // === InputText
+
+    // Prints text.
+    void Text(const char* val, ...);
 
     // Print a checkbox.
     // When val is false, it will print falseText.
@@ -123,14 +139,17 @@ namespace RVMT {
     bool InputText(const char* fieldID, char* val, unsigned int maxStrSize, int width);
 
     // !=== Drawing ===!
-    // === Text
+    // === DrawText
     // === DrawBox
     // === DrawHSeparator
     // === DrawVSeparator
+    // === SetCursorX
+    // === SetCursorY
     // === SameLine
 
-    // Print text.
-    void Text(const char* val, ...);
+    // Draws text without modifying the cursor.
+    // Returns final text length
+    void DrawText(int x, int y, const char* val);
 
     // Draw a box.
     // Does not modify the cursor.
@@ -147,6 +166,12 @@ namespace RVMT {
     // Gets style from BoxStyle_Current.
     void DrawVSeparator(int x, int y, int height);
 
+    // Moves X Cursor.
+    void SetCursorX(NewCursorPos mode, int value);
+
+    // Moves Y Cursor.
+    void SetCursorY(NewCursorPos mode, int value);
+
     // Move cursor to the previous element's right.
     void SameLine();
     
@@ -154,6 +179,7 @@ namespace RVMT {
     // === Render
     // === Start
     // === Stop
+    // === InternalSetCursor is located at internal namespace
 
     // Render drawlist's contents.
     void Render();
