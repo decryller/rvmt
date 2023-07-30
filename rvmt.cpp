@@ -101,6 +101,8 @@ int _NULLINT = 0;
 unsigned int _NULLUINT = 0;
 Window _NULLX11WINDOW = 0;
 
+bool manuallyModdedCurrentCursor = false;
+
 void requestNewRender() {
     renderRequests.push_back(1);
 };
@@ -110,14 +112,7 @@ void resetActiveItem() {
     activeItemID = "none";
 }
 
-// !=== Widgets ===!
-// === RVMT::Text
-// === RVMT::Checkbox
-// === RVMT::Button
-// === RVMT::Slider
-// === RVMT::InputText
-
-void RVMT::Text(const char* val, ...) {
+void preWidgetDrawCursorHandling() {
     if (sameLineCalled)
         cursorX = sameLineX,
         cursorY = sameLineY,
@@ -128,6 +123,17 @@ void RVMT::Text(const char* val, ...) {
         cursorX = sameLineXRevert,
         cursorY = sameLineYRevert,
         sameLinedPreviousItem = false;
+}
+
+// !=== Widgets ===!
+// === RVMT::Text
+// === RVMT::Checkbox
+// === RVMT::Button
+// === RVMT::Slider
+// === RVMT::InputText
+
+void RVMT::Text(const char* val, ...) {
+    preWidgetDrawCursorHandling();
         
     char buffer[1024];
 
@@ -146,16 +152,7 @@ void RVMT::Text(const char* val, ...) {
 
 bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
 
-    if (sameLineCalled)
-        cursorX = sameLineX,
-        cursorY = sameLineY,
-        sameLineCalled = false,
-        sameLinedPreviousItem = true;
-
-    else if (!sameLineCalled && sameLinedPreviousItem)
-        cursorX = sameLineXRevert,
-        cursorY = sameLineYRevert,
-        sameLinedPreviousItem = false;
+    preWidgetDrawCursorHandling();
 
     const int startX = cursorX;
     const int startY = cursorY;
@@ -193,16 +190,7 @@ bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
 }
 
 bool RVMT::Button(const char* str, ...) {
-    if (sameLineCalled)
-        cursorX = sameLineX,
-        cursorY = sameLineY,
-        sameLineCalled = false,
-        sameLinedPreviousItem = true;
-
-    else if (!sameLineCalled && sameLinedPreviousItem)
-        cursorX = sameLineXRevert,
-        cursorY = sameLineYRevert,
-        sameLinedPreviousItem = false;
+    preWidgetDrawCursorHandling();
 
     const int startX = cursorX;
     const int startY = cursorY;
@@ -244,16 +232,8 @@ bool RVMT::Slider(const char* sliderID, int length, float minVal, float maxVal, 
     if (length < 1)
         length = 1;
 
-    if (sameLineCalled)
-        cursorX = sameLineX,
-        cursorY = sameLineY,
-        sameLineCalled = false,
-        sameLinedPreviousItem = true;
+    preWidgetDrawCursorHandling();
 
-    else if (!sameLineCalled && sameLinedPreviousItem)
-        cursorX = sameLineXRevert,
-        cursorY = sameLineYRevert,
-        sameLinedPreviousItem = false;
 
     const int x = cursorX;
     const int y = cursorY;
@@ -315,16 +295,7 @@ bool RVMT::Slider(const char* sliderID, int length, float minVal, float maxVal, 
 }
 
 bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, int width) {
-    if (sameLineCalled)
-        cursorX = sameLineX,
-        cursorY = sameLineY,
-        sameLineCalled = false,
-        sameLinedPreviousItem = true;
-
-    else if (!sameLineCalled && sameLinedPreviousItem)
-        cursorX = sameLineXRevert,
-        cursorY = sameLineYRevert,
-        sameLinedPreviousItem = false;
+    preWidgetDrawCursorHandling();
 
     const int startX = cursorX;
     const int startY = cursorY;
@@ -668,30 +639,41 @@ void kbInputsThreadFunc() {
 }
 
 void RVMT::internal::InternalSetCursor(char axis, NewCursorPos mode, int value) {
-    int *cursor, *sameLineRevert;
-
-    if (axis == 'x')
-        cursor = &cursorX,
-        sameLineRevert = &sameLineXRevert;
+    int *cursor;
     
-    else if (axis == 'y')
-        cursor = &cursorY,
-        sameLineRevert = &sameLineYRevert;
+    if (axis == 'x') {
+        if (sameLineCalled)
+            cursor = &sameLineX;
+        
+        else if (!sameLineCalled && sameLinedPreviousItem)
+            cursor = &sameLineXRevert;
+
+        else
+            cursor = &cursorX;
+    }
+    
+    if (axis == 'y') {
+        if (sameLineCalled)
+            cursor = &sameLineY;
+        
+        else if (!sameLineCalled && sameLinedPreviousItem)
+            cursor = &sameLineYRevert;
+
+        else
+            cursor = &cursorY;
+    }
 
     switch (mode) {
         case NewCursorPos_ADD:
             *cursor += value;
-            *sameLineRevert += value;
             break;
 
         case NewCursorPos_SUBTRACT:
             *cursor -= value;
-            *sameLineRevert -= value;
             break;
 
         case NewCursorPos_ABSOLUTE:
             *cursor = value;
-            *sameLineRevert = value;
             break;
     }
 }
