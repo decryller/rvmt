@@ -5,17 +5,25 @@
 #include <sstream>
 #include <X11/Xlib.h>
 
-enum BoxStyle_ {
+enum BoxStyle {
     BoxStyle_Simple,
     BoxStyle_Bold,
     BoxStyle_DoubleLine,
     BoxStyle_Round
 };
 
- enum NewCursorPos {
+enum NewCursorPos {
     NewCursorPos_ADD        = 0,
     NewCursorPos_SUBTRACT   = 1,
     NewCursorPos_ABSOLUTE   = 2
+};
+
+enum WidgetProp {
+    WidgetProp_NULL_RVMT_WIDGET_PROPERTY   = 0,
+    WidgetProp_InputText_CustomCharset     = 1,
+    WidgetProp_InputText_IdleText          = 2,
+    WidgetProp_InputText_Censor            = 3,
+    WidgetProp_Button_TextOnly             = 4		
 };
 
 extern int BoxStyle_Current;
@@ -104,10 +112,8 @@ namespace RVMT {
         // Set cursor's position.
         void InternalSetCursor(char axis, NewCursorPos mode, int value);
     }
-    
-    extern std::vector<bool> renderRequests;
 
-    
+    extern std::vector<bool> renderRequests;
 
     // !=== Widgets ===!
     // === Texts
@@ -175,6 +181,11 @@ namespace RVMT {
     // Move cursor to the previous element's right.
     void SameLine();
     
+    // !=== Misc ===!
+    void PushPropertyForNextItem(WidgetProp property);
+    void PushPropertyForNextItem(WidgetProp property, int value);
+    void PushPropertyForNextItem(WidgetProp property, const char* value);
+
     // !=== Internal ===!
     // === Render
     // === Start

@@ -43,6 +43,18 @@ unsigned int strCount(const char* str, char ch) {
     return rvalue;
 }
 
+bool strContains(const char* str, char ch) {
+
+    for (int i = 0; i < 4096; i++) {
+        if (str[i] == 0)
+            return false;
+
+        if (str[i] == ch)
+            return true;
+    }
+    return false;
+}
+
 // Start extern variables.
     std::vector<RVMT::internal::drawableElement> RVMT::internal::drawList{0};
     std::vector<std::wstring> RVMT::internal::canvas{L""};
@@ -96,6 +108,16 @@ unsigned int strCount(const char* str, char ch) {
     
 using namespace RVMT;
 using namespace RVMT::internal;
+
+struct CustomProperty {
+    WidgetProp property = WidgetProp_NULL_RVMT_WIDGET_PROPERTY;
+    int intVal = 0;
+    const char* strVal = "none";
+};
+
+CustomProperty _DefaultCustomProperty;
+
+std::vector<CustomProperty> pushedProperties;
 
 int _NULLINT = 0;
 unsigned int _NULLUINT = 0;
@@ -151,7 +173,6 @@ void RVMT::Text(const char* val, ...) {
 }
 
 bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
-
     preWidgetDrawCursorHandling();
 
     const int startX = cursorX;
@@ -190,35 +211,47 @@ bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
 }
 
 bool RVMT::Button(const char* str, ...) {
+
+    bool drawTextOnly = false;
+    for (auto &prop : pushedProperties)
+        if (prop.property == WidgetProp_Button_TextOnly)
+            drawTextOnly = true;
+
     preWidgetDrawCursorHandling();
 
-    const int startX = cursorX;
-    const int startY = cursorY;
-
+    // Parse argument list
     char buffer[1024];
     va_list args;
     va_start(args, str);
     const auto textLength = vsnprintf(buffer, sizeof(buffer), str, args);
     va_end(args);
 
-    DrawBox(cursorX, cursorY, textLength, 1);
+    const int startX = cursorX;
+    const int startY = cursorY;
+    const unsigned int buttonHeight = drawTextOnly ? 1 : 3;
+    const unsigned int buttonWidth = drawTextOnly ? textLength : textLength + 2;
 
-    // Print text in the button's middle.
-    cursorX++;
-    cursorY++;
+    if (!drawTextOnly) {
+        DrawBox(cursorX, cursorY, textLength, 1);
+
+        // Prepare cursor for text to be drawn at the box's middle
+        cursorX++;
+        cursorY++;
+    }
 
     DrawText(cursorX, cursorY, buffer);
 
-    sameLineX = cursorX + textLength + 1;
-    sameLineY = cursorY - 1;
-
     cursorX = startX;
-    cursorY = startY + 3;
+    cursorY = startY + buttonHeight;
 
+    sameLineX = startX + buttonWidth;
+    sameLineY = startY;
+
+    pushedProperties.clear();
     // Handle return value
     if (!PREVINPUT_MOUSE1HELD && NEWINPUT_MOUSE1HELD &&
-        NEWINPUT_MOUSECOL >= startX && NEWINPUT_MOUSECOL <= startX + textLength + 1 &&
-        NEWINPUT_MOUSEROW >= startY && NEWINPUT_MOUSEROW < startY + 3) {
+        NEWINPUT_MOUSECOL >= startX && NEWINPUT_MOUSECOL <= startX + buttonWidth &&
+        NEWINPUT_MOUSEROW >= startY && NEWINPUT_MOUSEROW < startY + buttonHeight) {
 
         resetActiveItem();
         activeItemType = ItemType_Button;
@@ -295,6 +328,29 @@ bool RVMT::Slider(const char* sliderID, int length, float minVal, float maxVal, 
 }
 
 bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, int width) {
+
+    const char* customCharset = nullptr;
+    const char* idlingText = "...";
+    bool censorOutput = false;
+
+    for (auto &prop : pushedProperties) 
+        switch (prop.property) {
+            case WidgetProp_InputText_CustomCharset:
+                customCharset = prop.strVal;
+                break;
+
+            case WidgetProp_InputText_IdleText:
+                idlingText = prop.strVal;
+                break;
+
+            case WidgetProp_InputText_Censor:
+                censorOutput = true;
+                break;
+
+            default:
+                break;
+        }
+    
     preWidgetDrawCursorHandling();
 
     const int startX = cursorX;
@@ -340,8 +396,16 @@ bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, in
                     val[inputLength - 1] = 0;
                 }
 
+                if (customCharset != nullptr &&
+                    !strContains(customCharset, KEY)) 
+                    continue;
+                
+
                 else if (inputLength < maxStrSize) {
-                    val[inputLength] = KEY;
+                    val[inputLength] =
+                        censorOutput
+                        ? '*'
+                        : KEY;
                     val[++inputLength] = 0;
                 }
             }
@@ -353,7 +417,7 @@ bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, in
     // Unfocused and no text written.
     if (!thisFieldIsActive &&
         inputLength == 0)
-        DrawText(cursorX, cursorY, "...");
+        DrawText(cursorX, cursorY, idlingText);
 
     else if (inputLength > width)
         DrawText(cursorX, cursorY, &val[inputLength - width]);
@@ -368,6 +432,7 @@ bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, in
     cursorY += 2;
     cursorX--;
 
+    pushedProperties.clear(); 
     return 0;
 }
 
@@ -534,6 +599,33 @@ void RVMT::SameLine() {
     cursorX = sameLineX;
     cursorY = sameLineY;
 }
+
+void RVMT::PushPropertyForNextItem(WidgetProp property, int value) {
+    CustomProperty newProp;
+
+    newProp.property = property;
+    newProp.intVal = value;
+
+    pushedProperties.push_back(newProp);
+};
+
+void RVMT::PushPropertyForNextItem(WidgetProp property, const char* value) {
+    CustomProperty newProp;
+
+    newProp.property = property;
+    newProp.strVal = value;
+
+    pushedProperties.push_back(newProp);
+};
+
+void RVMT::PushPropertyForNextItem(WidgetProp property) {
+    CustomProperty newProp;
+
+    newProp.property = property;
+
+    pushedProperties.push_back(newProp);
+};
+
 
 // !=== Internal ===!
 // === Input threads
