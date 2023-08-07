@@ -250,7 +250,7 @@ bool RVMT::Button(const char* str, ...) {
     pushedProperties.clear();
     // Handle return value
     if (!PREVINPUT_MOUSE1HELD && NEWINPUT_MOUSE1HELD &&
-        NEWINPUT_MOUSECOL >= startX && NEWINPUT_MOUSECOL <= startX + buttonWidth &&
+        NEWINPUT_MOUSECOL >= startX && NEWINPUT_MOUSECOL < startX + buttonWidth &&
         NEWINPUT_MOUSEROW >= startY && NEWINPUT_MOUSEROW < startY + buttonHeight) {
 
         resetActiveItem();
@@ -266,7 +266,6 @@ bool RVMT::Slider(const char* sliderID, int length, float minVal, float maxVal, 
         length = 1;
 
     preWidgetDrawCursorHandling();
-
 
     const int x = cursorX;
     const int y = cursorY;
@@ -390,17 +389,17 @@ bool RVMT::InputText(const char* fieldID, char* val, unsigned int maxStrSize, in
 
                 // Delete / Backspace
                 if (KEY == 127 || KEY == 8) {
-                    if (inputLength == 0) // Empty field
-                        continue;
-
-                    val[inputLength - 1] = 0;
+                    if (inputLength != 0) // Empty field
+                    	val[inputLength - 1] = 0;
+					continue;
                 }
 
+				// Look for custom charset.
                 if (customCharset != nullptr &&
                     !strContains(customCharset, KEY)) 
                     continue;
-                
-
+				
+				// Append pressed key to the field's text.
                 else if (inputLength < maxStrSize) {
                     val[inputLength] =
                         censorOutput
@@ -771,17 +770,6 @@ void RVMT::internal::InternalSetCursor(char axis, NewCursorPos mode, int value) 
 }
 
 void RVMT::Render() {
-
-    // Reset active item if idling.
-    if (!NEWINPUT_MOUSE1HELD &&
-        activeItemType != ItemType_None &&
-        activeItemType != ItemType_InputText) {
-        
-        activeItemType = ItemType_None;
-        activeItemID = "none";
-        renderRequests.push_back(1);
-    }
-
     struct winsize terminalSize;
     ioctl(1, TIOCGWINSZ, &terminalSize);
 
@@ -814,6 +802,16 @@ void RVMT::Render() {
     std::wcout << preScreen.str(); std::wcout.flush();
     preScreen.str(L"");
 
+	// Reset active item if idling.
+    if (!NEWINPUT_MOUSE1HELD &&
+        activeItemType != ItemType_None &&
+        activeItemType != ItemType_InputText) {
+        
+        activeItemType = ItemType_None;
+        activeItemID = "none";
+        renderRequests.push_back(1);
+    }
+
     cursorX = 0;
     cursorY = 0;
 }
@@ -833,7 +831,6 @@ void RVMT::Start() {
     XQueryPointer(
         rootDisplay, rootWindow, &_NULLX11WINDOW, &termX11Win,
         &_NULLINT, &_NULLINT, &_NULLINT, &_NULLINT, &_NULLUINT);
-
 
     tcgetattr(0, &_termios);
     // Turn off canonical mode and input echoing for keyboard inputs.

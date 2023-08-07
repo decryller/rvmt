@@ -64,41 +64,6 @@ int main() {
         RVMT::Text("An input field using\nstd::string inputFieldSTDString");
         RVMT::InputText("sample input text using std::string", &inputFieldSTDString[0], 64, 24);
 
-        static unsigned int frameCount;
-        RVMT::Text("Frame count: %i", frameCount++);
-
-        RVMT::Text("Active Item Type: ");
-        RVMT::SameLine();
-
-        // This is mainly debug info, so I'm not ashamed of this looking ugly.
-        switch (RVMT::internal::activeItemType) {
-            case RVMT::internal::ItemType_None:
-                RVMT::Text("ItemType_None (%i)", RVMT::internal::ItemType_None);
-                break;
-
-            case RVMT::internal::ItemType_Slider:
-                RVMT::Text("ItemType_Slider (%i)", RVMT::internal::ItemType_Slider);
-                break;
-
-            case RVMT::internal::ItemType_Button:
-                RVMT::Text("ItemType_Button (%i)", RVMT::internal::ItemType_Button);
-                break;
-
-            case RVMT::internal::ItemType_Checkbox:
-                RVMT::Text("ItemType_Checkbox (%i)", RVMT::internal::ItemType_Checkbox);
-                break;
-
-            case RVMT::internal::ItemType_InputText:
-                RVMT::Text("ItemType_InputText (%i)", RVMT::internal::ItemType_InputText);
-                break;
-
-            default:
-                RVMT::Text("unknown... (?)");
-                break;
-        }
-
-        RVMT::Text("Active Item ID: %s", RVMT::internal::activeItemID);
-
         // === Box styles
         RVMT::SetCursorX(NewCursorPos_ABSOLUTE, 46);
         RVMT::SetCursorY(NewCursorPos_ABSOLUTE, 0);
@@ -122,8 +87,6 @@ int main() {
         RVMT::Button(" BoxStyle_Round ");
         RVMT::DrawHSeparator(72, 10, 1);
         RVMT::DrawVSeparator(71, 9, 1);
-
-        RVMT::SetCursorY(NewCursorPos_ADD, 4);
         
         // SameLine testing
         static char BXChar[5]{0,0,0,0,0};
@@ -174,6 +137,41 @@ int main() {
 
         RVMT::SameLine();
         RVMT::Text("D4");
+
+        static unsigned int frameCount;
+        RVMT::Text("Frame count: %i", frameCount++);
+
+        RVMT::Text("Active Item Type: ");
+        RVMT::SameLine();
+
+        // This is mainly debug info, so I'm not ashamed of this looking ugly.
+        switch (RVMT::internal::activeItemType) {
+            case RVMT::internal::ItemType_None:
+                RVMT::Text("ItemType_None (%i)", RVMT::internal::ItemType_None);
+                break;
+
+            case RVMT::internal::ItemType_Slider:
+                RVMT::Text("ItemType_Slider (%i)", RVMT::internal::ItemType_Slider);
+                break;
+
+            case RVMT::internal::ItemType_Button:
+                RVMT::Text("ItemType_Button (%i)", RVMT::internal::ItemType_Button);
+                break;
+
+            case RVMT::internal::ItemType_Checkbox:
+                RVMT::Text("ItemType_Checkbox (%i)", RVMT::internal::ItemType_Checkbox);
+                break;
+
+            case RVMT::internal::ItemType_InputText:
+                RVMT::Text("ItemType_InputText (%i)", RVMT::internal::ItemType_InputText);
+                break;
+
+            default:
+                RVMT::Text("unknown... (?)");
+                break;
+        }
+
+        RVMT::Text("Active Item ID: %s", RVMT::internal::activeItemID);
 
         RVMT::SetCursorX(NewCursorPos_ABSOLUTE, colCount - 8);
         RVMT::SetCursorY(NewCursorPos_ABSOLUTE, rowCount - 3);
