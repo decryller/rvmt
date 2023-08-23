@@ -250,7 +250,7 @@ bool RVMT::Checkbox(const char* trueText, const char* falseText, bool* val) {
 	DrawString(cursorX, cursorY, ptr);
 
 	// Handle cursor and SameLine.
-	sameLineX = cursorX;
+	sameLineX = cursorX + textWidth;
 	sameLineY = cursorY;
 
 	cursorY++;
